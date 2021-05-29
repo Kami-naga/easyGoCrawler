@@ -12,7 +12,7 @@ func main() {
 	//	ParseFunc: zhenai.ParseCityList,
 	//})
 	e := engine.ConcurrentEngine{
-		Scheduler:   &scheduler.SimpleScheduler{},
+		Scheduler:   &scheduler.QueuedScheduler{},
 		WorkerCount: 10,
 	}
 
