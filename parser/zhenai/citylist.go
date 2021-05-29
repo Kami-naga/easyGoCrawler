@@ -17,9 +17,10 @@ func ParseCityList(
 		result.Requests = append(
 			result.Requests, engine.Request{
 				Url:       string(m[1]),
-				ParseFunc: engine.NilParser,
+				ParseFunc: ParseCity,
 			})
-		result.Items = append(result.Items, string(m[2]))
+		result.Items = append(
+			result.Items, "City "+string(m[2]))
 	}
 
 	return result

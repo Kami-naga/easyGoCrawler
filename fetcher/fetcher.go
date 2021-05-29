@@ -3,7 +3,6 @@ package fetcher
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -26,16 +25,17 @@ func Fetch(url string) ([]byte, error) {
 
 	}
 
+	bodyReader := bufio.NewReader(resp.Body)
 	//check & get correct charset decoding approach
-	e := determineEncoding(resp.Body)
-	utf8Reader := transform.NewReader(resp.Body,
+	e := determineEncoding(bodyReader)
+	utf8Reader := transform.NewReader(bodyReader,
 		e.NewDecoder())
 
 	return ioutil.ReadAll(utf8Reader)
 }
 
-func determineEncoding(r io.Reader) encoding.Encoding {
-	bytes, err := bufio.NewReader(r).Peek(1024)
+func determineEncoding(r *bufio.Reader) encoding.Encoding {
+	bytes, err := r.Peek(1024)
 	if err != nil {
 		log.Printf("fetcher error: %v", err)
 		return unicode.UTF8
