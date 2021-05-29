@@ -3,10 +3,20 @@ package main
 import (
 	"goCrawler/engine"
 	"goCrawler/parser/zhenai"
+	"goCrawler/scheduler"
 )
 
 func main() {
-	engine.Run(engine.Request{
+	//engine.SingleEngine{}.Run(engine.Request{
+	//	Url:       "http://localhost:8080/mock/www.zhenai.com/zhenghun",
+	//	ParseFunc: zhenai.ParseCityList,
+	//})
+	e := engine.ConcurrentEngine{
+		Scheduler:   &scheduler.SimpleScheduler{},
+		WorkerCount: 10,
+	}
+
+	e.Run(engine.Request{
 		Url:       "http://localhost:8080/mock/www.zhenai.com/zhenghun",
 		ParseFunc: zhenai.ParseCityList,
 	})
