@@ -14,10 +14,14 @@ func ParseCity(
 	matches := re.FindAllSubmatch(contents, -1)
 	result := engine.ParseResult{}
 	for _, m := range matches {
+		name := string(m[2]) // key point! name should be copied! or we will get the name of the same person
 		result.Requests = append(
 			result.Requests, engine.Request{
-				Url:       string(m[1]),
-				ParseFunc: engine.NilParser,
+				Url: string(m[1]),
+				ParseFunc: func(
+					c []byte) engine.ParseResult {
+					return ParseProfile(c, name)
+				},
 			})
 		result.Items = append(
 			result.Items, "User "+string(m[2]))
