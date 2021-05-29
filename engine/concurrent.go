@@ -1,6 +1,9 @@
 package engine
 
-import "log"
+import (
+	"goCrawler/model"
+	"log"
+)
 
 type ConcurrentEngine struct {
 	Scheduler   Scheduler
@@ -8,10 +11,15 @@ type ConcurrentEngine struct {
 }
 
 type Scheduler interface {
+	ReadyNotifier
 	Submit(Request)
-	ConfigureMasterWorkerChan(chan Request)
-	WorkerReady(chan Request)
+	WorkerChan() chan Request
+
 	Run()
+}
+
+type ReadyNotifier interface {
+	WorkerReady(chan Request)
 }
 
 func (e *ConcurrentEngine) Run(seeds ...Request) {
@@ -19,32 +27,41 @@ func (e *ConcurrentEngine) Run(seeds ...Request) {
 	e.Scheduler.Run()
 
 	for i := 0; i < e.WorkerCount; i++ {
-		createWorker(out, e.Scheduler)
+		createWorker(e.Scheduler.WorkerChan(), out, e.Scheduler)
 	}
 
 	for _, r := range seeds {
+		if isDup(r.Url) {
+			log.Printf("Duplicate request: %s", r.Url)
+			continue
+		}
 		e.Scheduler.Submit(r)
 	}
 
-	itemCnt := 0
+	profileCnt := 0
 	for {
 		result := <-out
 		for _, item := range result.Items {
-			log.Printf("Got item # %d: %v", itemCnt, item)
-			itemCnt++
+			if _, ok := item.(model.Profile); ok {
+				log.Printf("Got item # %d: %v", profileCnt, item)
+				profileCnt++
+			}
 		}
 
+		// url dedup
 		for _, r := range result.Requests {
+			if isDup(r.Url) {
+				continue
+			}
 			e.Scheduler.Submit(r)
 		}
 	}
 }
 
-func createWorker(out chan ParseResult, s Scheduler) {
-	in := make(chan Request)
+func createWorker(in chan Request, out chan ParseResult, notifier ReadyNotifier) {
 	go func() {
 		for {
-			s.WorkerReady(in)
+			notifier.WorkerReady(in)
 			request := <-in
 			result, err := worker(request)
 			if err != nil {
@@ -53,4 +70,21 @@ func createWorker(out chan ParseResult, s Scheduler) {
 			out <- result
 		}
 	}()
+}
+
+// some issues: 1.it will take too much memory to save those long urls
+// how to solve it? make urls short -> md5, md5 encoding is too slow? -> bloom filter!
+// memory is still not enough? maybe you need some databases like redis
+// another issue: all the map will be lost when system shut down, how to solve it?
+// save the map into files before shut down the system, or just save it every some time
+// or just save it into some external databases like redis
+var visitedUrls = make(map[string]bool)
+
+func isDup(url string) bool {
+	if visitedUrls[url] {
+		return true
+	}
+
+	visitedUrls[url] = true
+	return false
 }
